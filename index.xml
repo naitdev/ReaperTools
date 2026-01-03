@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<index version="1" name="Nait ReaperTools" commit="6028b984dd6d58180c37493de845a9c5b505e8ca">
+  <category name="MIDI">
+    <reapack name="nait_MIDI Keytracked CC.jsfx" type="effect" desc="MIDI Keytracked CC">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 MIDI Keytracked CC\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.0" author="Nait" time="2026-01-03T06:09:08Z">
+        <changelog><![CDATA[Initial Release]]></changelog>
+        <source>https://github.com/naitdev/ReaperTools/raw/6028b984dd6d58180c37493de845a9c5b505e8ca/MIDI/nait_MIDI%20Keytracked%20CC.jsfx</source>
+      </version>
+    </reapack>
+  </category>
+</index>
