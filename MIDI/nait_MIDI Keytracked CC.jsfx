@@ -1,0 +1,233 @@
+desc: MIDI Keytracked CC
+author: Nait
+version: 1.0
+changelog: Initial Release
+about:
+	# MIDI Keytracked CC
+  Sends MIDI CC messages based on keytracking (note number played). Supports smoothing, triggering modes, lower/higher biasing of value for held notes.
+	
+	Usage:
+		On your track, put this JSFX before whatever instrument is processing your sound (ex. a VST). 
+		You will need to manually learn the "Target MIDI CC" value on some parameter of the instrument (ex. learn MIDI CC 9 to filter cutoff).
+		
+	Parameters:
+		"Target MIDI CC": Which MIDI CC to modify based on note position.
+		"Output CC (Min/Max)": Defines the min and max CC values output by keytracking.
+		"Input Note Range (Min/Max)": Defines the note range that affects keytracking. Notes outside this range follow Below/Above Note Range Handling.
+		"Below/Above Note Range Handling": Determines what happens when notes fall outside the keytracking range.
+			- Do Nothing: Ignore notes outside the range.
+			- Clamp to Output CC (Min/Max): Force CC value to the respective limit.
+		"Inversion": 
+			- Normal: Higher notes = higher CC.
+			- Inverted: Lower notes = higher CC.
+		"Keytrack Mode": Enable or disable keytracking dynamically.
+		"Trigger Mode": Determines when keytracking triggers:
+			- Every Note On: Keytracking is updated when new notes are played (note: releasing notes does not update).
+			- Retrigger Only: Only the first note triggers CC; must release all notes to retrigger.
+		"Mono Note Priority": When multiple notes are held, and new notes are played, which note determines the keytracking? 
+			- For Trigger Mode "Every Note On" only.
+			- Last Note Pressed: Most recent note on determines keytracking. 
+			- Weighted Center: Average note, but gently pulled toward the lowest or highest held note, based on Center Bias (%). Can be fully lowest (-100) or highest (100) note.
+		"Center Bias (%)": Biases the keytracking value towards lower notes held, or higher notes held or anywhere between
+				- For Mono Note Priority "Weighted Center" only.
+				- Set to anything between -100 and 100.
+				- Negative values bias towards the lower held notes.
+				- Positive values bias towards the higher held notes.
+				- -100: The value for keytracking is the lowest held note value.
+				- 100: The value for keytracking is the highest held note value.
+				- 0: The value for keytracking is the average value of all held notes.			
+		"CC Slew Time (ms)": How quickly the CC moves toward the target.
+			- 0 ms: instant.
+			- 20-50 ms: natural analog feel.
+			- 100+ ms: slow morphing.
+
+slider1:9<0,119,1>Target MIDI CC
+slider2:0<0,127,1>Output CC (Min)
+slider3:127<0,127,1>Output CC (Max)
+slider4:0<0,127,1>Input Note Range (Min)
+slider5:127<0,127,1>Input Note Range (Max)
+slider6:1<0,1,1{Do Nothing,Clamp to Output CC (Min)}>Below Note Range Handling
+slider7:1<0,1,1{Do Nothing,Clamp to Output CC (Max)}>Above Note Range Handling
+slider8:0<0,1,1{Normal (High Notes = Higher CC Values),Inverted (High Notes = Lower CC Values)}>Inversion
+slider9:1<0,1,1{Never,Always}>Keytrack Mode
+slider10:0<0,1,1{Every Note On,Retrigger Only}>Trigger Mode
+slider11:0<0,1,1{Last Note Pressed,Weighted Center}>Mono Note Priority
+slider12:0<-100,100,1>Center Bias (%)
+slider20:0<0,200,1>CC Slew Time (ms)
+slider40:0<0,127,1>Note Value (For Display Only)
+
+@init
+NOTE_OFF = 0x80;
+NOTE_ON  = 0x90;
+
+held_notes = 0;
+last_note  = -1;
+current_cc = -1;
+target_cc  = -1;
+last_sent_cc = -1;
+
+is_start_up = 1;
+
+// note state table
+i = 0;
+loop(128,
+  note_on[i] = 0;
+  i += 1;
+);
+
+function calcKeytrackValue(n,nmin,nmax,vmin,vmax,inv,lockmin,lockmax)
+(
+  n >= nmin && n <= nmax ? (
+    range = max(1, nmax - nmin);
+    pos = (n - nmin) / range;
+    inv ? pos = 1 - pos;
+    floor(pos * (vmax - vmin)) + vmin;
+  )
+  : n < nmin && lockmin ? (inv ? vmax : vmin)
+  : n > nmax && lockmax ? (inv ? vmin : vmax)
+  : -1;
+);
+
+function get_weighted_center_note(bias)
+(
+  sum = 0;
+  count = 0;
+  lowest = -1;
+  highest = -1;
+  i = 0;
+
+  // Clamp bias
+  bias < -1 ? bias = -1 :
+  bias >  1 ? bias =  1;
+
+  loop(128,
+    note_on[i] ? (
+      sum += i;
+      count += 1;
+      lowest < 0 ? lowest = i;
+      highest = i;
+    );
+    i += 1;
+  );
+
+  count == 0 ? -1 :
+
+  (
+    avg = sum / count;
+
+    // Choose bias target
+    target =
+      bias > 0 ? highest :
+      bias < 0 ? lowest :
+                 avg;
+
+    // Interpolate between average and target
+    com = avg + abs(bias) * (target - avg);
+
+    floor(com + 0.5);
+  );
+);
+
+function process_cc_slew() (
+  target_cc >= 0 && target_cc != current_cc ? (
+    step = (target_cc - current_cc) / slew_samples;
+
+    current_cc < 0 ? current_cc = target_cc :
+    (
+      current_cc += step;
+      abs(current_cc - target_cc) < 1 ? current_cc = target_cc;
+    );
+
+    cc_int = floor(current_cc);
+
+    // CC rate limiting: only send when value actually changes
+    cc_int != last_sent_cc ? (
+      last_sent_cc = cc_int;
+      cc_status = 0xB0 | channel;
+      cc_msg23  = midiCC | (cc_int << 8);
+      midisend(0, cc_status, cc_msg23);
+    );
+  );
+);
+
+@slider
+minval  = min(slider2, slider3);
+maxval  = max(slider2, slider3);
+minnote = min(slider4, slider5);
+maxnote = max(slider4, slider5);
+
+slider2 = minval;
+slider3 = maxval;
+slider4 = minnote;
+slider5 = maxnote;
+
+midiCC       = slider1;
+lowmode      = slider6;
+highmode     = slider7;
+invert       = slider8;
+keytrackmode = slider9;
+
+triggermode  = slider10;
+monomode     = slider11;
+bias 		     = slider12 / 100;
+slew_ms      = slider20;
+
+slew_samples = max(1, slew_ms * srate / 1000);
+
+// This is just to ensure the window is sized for everything to fit, right off the bat, then it will hide sliders when not needed. 
+is_start_up ? (is_start_up = 0) : (
+	slider_show(slider11, slider10 == 0 ? 1 : 0); // Hide Mono Note Priority if Trigger Mode is not set to Every Note On (otherwise it will really do nothing)
+	slider_show(slider12, slider11 == 1 && slider10 == 0 ? 1 : 0); // Show only when Mono Note Priority is Weighted Center, and Trigger Mode is set to Every Note On
+);
+
+@block
+while (midirecv(offset, msg1, msg23))
+(
+  status  = msg1 & 0xF0;
+  channel = msg1 & 0x0F;
+  note    = msg23 & 0xFF;
+  vel     = (msg23 >> 8) & 0xFF;
+
+  status == NOTE_ON && vel > 0 ? (
+    note_on[note] = 1;
+    held_notes += 1;
+		
+	slider40 != note ? (
+		slider40 = note;
+		sliderchange(slider40);
+	); 
+	
+	last_note = note;	
+
+    send_ok =
+      keytrackmode == 1 &&
+      (triggermode == 0 || (triggermode == 1 && held_notes == 1));
+
+    send_ok ? (
+      selected_note =
+        triggermode == 0 ? (
+          monomode == 0 ? last_note :          
+			get_weighted_center_note(bias)
+        ) :
+        last_note;
+
+      target_cc = calcKeytrackValue(
+        selected_note,
+        minnote, maxnote,
+        minval, maxval,
+        invert, lowmode, highmode
+      );
+    );
+  );
+
+  (status == NOTE_OFF || (status == NOTE_ON && vel == 0)) ? (
+    note_on[note] = 0;
+    held_notes = max(0, held_notes - 1);
+    held_notes == 0 ? last_note = -1;
+  );
+
+  midisend(offset, msg1, msg23);
+);
+
+@sample
+process_cc_slew();
