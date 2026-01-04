@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Nait ReaperTools" commit="6028b984dd6d58180c37493de845a9c5b505e8ca">
+<index version="1" name="Nait ReaperTools" commit="f89979762264fcc2b9554a410c8bcad3b0a6257b">
   <category name="MIDI">
     <reapack name="nait_MIDI Keytracked CC.jsfx" type="effect" desc="MIDI Keytracked CC">
       <metadata>
@@ -14,6 +14,21 @@
       <version name="1.0" author="Nait" time="2026-01-03T06:09:08Z">
         <changelog><![CDATA[Initial Release]]></changelog>
         <source>https://github.com/naitdev/ReaperTools/raw/6028b984dd6d58180c37493de845a9c5b505e8ca/MIDI/nait_MIDI%20Keytracked%20CC.jsfx</source>
+      </version>
+    </reapack>
+    <reapack name="nait_MIDI Keytracked Velocity_v1.1.jsfx" type="effect" desc="MIDI Keytracked Velocity">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 MIDI Keytracked Velocity\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.1" author="Nait" time="2026-01-04T02:49:37Z">
+        <changelog><![CDATA[Changes to make more consistent with MIDI Keytracked CC JSFX]]></changelog>
+        <source>https://github.com/naitdev/ReaperTools/raw/f89979762264fcc2b9554a410c8bcad3b0a6257b/MIDI/nait_MIDI%20Keytracked%20Velocity_v1.1.jsfx</source>
       </version>
     </reapack>
   </category>
