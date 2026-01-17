@@ -1,7 +1,7 @@
 desc: MIDI Keytracked CC
 author: Nait
-version: 1.1
-changelog: Added probabilistic randomization (bi or unipolar), and value output and help in debug window.
+version: 1.2
+changelog: Added probabilistic randomization (bi or unipolar), and value output and help in debug window. Fix some cosmetic stuff.
 about:
 	# MIDI Keytracked CC
   Sends MIDI CC messages based on keytracking (note number played).
@@ -62,7 +62,7 @@ slider12:0<-100,100,1>Center Bias (%)
 slider20:0<0,200,1>CC Slew Time (ms)
 slider25:0<0,64,1>Random +/-
 slider26:0<0,100,1>Random Probability %
-slider27:0<3,1,1{Bipolar (+/-), Unipolar (+), Unipolar (-)}>Random Type
+slider27:0<0,2,1{Bipolar (+/-), Unipolar (+), Unipolar (-)}>Random Type
 slider28:0<0,1,1{Respect Output CC Min/Max,Free (0-127)}>Random Range Limit
 
 @init
