@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Nait ReaperTools" commit="aa1e883e68ff0b8a7c15f0cf9d53cd0b528c579a">
+<index version="1" name="Nait ReaperTools" commit="17bf0b94a32aaab4a52b2b3facb0efef5dd51d6a">
   <category name="MIDI">
     <reapack name="nait_MIDI Keytracked CC.jsfx" type="effect" desc="MIDI Keytracked CC">
       <metadata>
@@ -18,6 +18,10 @@
       <version name="1.1" author="Nait" time="2026-01-17T00:33:30Z">
         <changelog><![CDATA[Added probabilistic randomization (bi or unipolar), and value output and help in debug window.]]></changelog>
         <source>https://github.com/naitdev/ReaperTools/raw/aa1e883e68ff0b8a7c15f0cf9d53cd0b528c579a/MIDI/nait_MIDI%20Keytracked%20CC.jsfx</source>
+      </version>
+      <version name="1.2" author="Nait" time="2026-01-17T01:27:30Z">
+        <changelog><![CDATA[Added probabilistic randomization (bi or unipolar), and value output and help in debug window. Fix some cosmetic stuff.]]></changelog>
+        <source>https://github.com/naitdev/ReaperTools/raw/17bf0b94a32aaab4a52b2b3facb0efef5dd51d6a/MIDI/nait_MIDI%20Keytracked%20CC.jsfx</source>
       </version>
     </reapack>
     <reapack name="nait_MIDI Keytracked Velocity_v1.1.jsfx" type="effect" desc="MIDI Keytracked Velocity">
