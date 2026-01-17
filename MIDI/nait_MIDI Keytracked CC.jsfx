@@ -1,10 +1,12 @@
 desc: MIDI Keytracked CC
 author: Nait
-version: 1.0
-changelog: Initial Release
+version: 1.1
+changelog: Added probabilistic randomization (bi or unipolar), and value output and help in debug window.
 about:
 	# MIDI Keytracked CC
-  Sends MIDI CC messages based on keytracking (note number played). Supports smoothing, triggering modes, lower/higher biasing of value for held notes.
+  Sends MIDI CC messages based on keytracking (note number played).
+  Supports smoothing, triggering modes, weighted mono behavior,
+  and optional probabilistic randomization (bi or unipolar).
 	
 	Usage:
 		On your track, put this JSFX before whatever instrument is processing your sound (ex. a VST). 
@@ -21,14 +23,14 @@ about:
 			- Normal: Higher notes = higher CC.
 			- Inverted: Lower notes = higher CC.
 		"Keytrack Mode": Enable or disable keytracking dynamically.
-		"Trigger Mode": Determines when keytracking triggers:
+		"Trigger Mode": Determines when CC values are (re)calculated.:
 			- Every Note On: Keytracking is updated when new notes are played (note: releasing notes does not update).
 			- Retrigger Only: Only the first note triggers CC; must release all notes to retrigger.
 		"Mono Note Priority": When multiple notes are held, and new notes are played, which note determines the keytracking? 
 			- For Trigger Mode "Every Note On" only.
 			- Last Note Pressed: Most recent note on determines keytracking. 
 			- Weighted Center: Average note, but gently pulled toward the lowest or highest held note, based on Center Bias (%). Can be fully lowest (-100) or highest (100) note.
-		"Center Bias (%)": Biases the keytracking value towards lower notes held, or higher notes held or anywhere between
+		"Center Bias (%)": Biases the keytracking value towards lower notes held, or higher notes held or anywhere between.
 				- For Mono Note Priority "Weighted Center" only.
 				- Set to anything between -100 and 100.
 				- Negative values bias towards the lower held notes.
@@ -40,6 +42,10 @@ about:
 			- 0 ms: instant.
 			- 20-50 ms: natural analog feel.
 			- 100+ ms: slow morphing.
+		"Random +/-": Between 0 and this value will be randomly added or subtracted from each CC value, potentially on each trigger (each time CC is normally recaculated). 
+		"Random Probability %": The percentage likelihood that a random value will be applied. 0 = never, 100 = always.
+		"Random Type": Controls whether random CC deviation is bipolar, positive-only, or negative-only.
+		"Random Range Limit": Does this respect the Output CC Min/Max, or can it go outside those bounds (0-127)?
 
 slider1:9<0,119,1>Target MIDI CC
 slider2:0<0,127,1>Output CC (Min)
@@ -54,7 +60,10 @@ slider10:0<0,1,1{Every Note On,Retrigger Only}>Trigger Mode
 slider11:0<0,1,1{Last Note Pressed,Weighted Center}>Mono Note Priority
 slider12:0<-100,100,1>Center Bias (%)
 slider20:0<0,200,1>CC Slew Time (ms)
-slider40:0<0,127,1>Note Value (For Display Only)
+slider25:0<0,64,1>Random +/-
+slider26:0<0,100,1>Random Probability %
+slider27:0<3,1,1{Bipolar (+/-), Unipolar (+), Unipolar (-)}>Random Type
+slider28:0<0,1,1{Respect Output CC Min/Max,Free (0-127)}>Random Range Limit
 
 @init
 NOTE_OFF = 0x80;
@@ -68,7 +77,8 @@ last_sent_cc = -1;
 
 is_start_up = 1;
 
-// note state table
+linenumber = 0;
+									 
 i = 0;
 loop(128,
   note_on[i] = 0;
@@ -96,7 +106,7 @@ function get_weighted_center_note(bias)
   highest = -1;
   i = 0;
 
-  // Clamp bias
+							 
   bias < -1 ? bias = -1 :
   bias >  1 ? bias =  1;
 
@@ -114,21 +124,40 @@ function get_weighted_center_note(bias)
 
   (
     avg = sum / count;
-
-    // Choose bias target
-    target =
-      bias > 0 ? highest :
-      bias < 0 ? lowest :
-                 avg;
-
-    // Interpolate between average and target
+    target = bias > 0 ? highest :
+             bias < 0 ? lowest :
+                        avg;
     com = avg + abs(bias) * (target - avg);
-
     floor(com + 0.5);
   );
 );
 
-function process_cc_slew() (
+function apply_randomization(cc)
+(
+  rand_amt > 0 && rand_prob > 0 ? (
+    rand(1) * 100 < rand_prob ? (
+
+      r = floor(rand(rand_amt + 1));
+
+      rand_type == 0 ? (        // Bipolar
+        rand(1) < 0.5 ? r = -r;
+      ) :
+      rand_type == 2 ? (        // Unipolar (-)
+        r = -r;
+      );
+
+      cc += r;
+
+      rand_limit == 0 ?
+        cc = min(max(cc, minval), maxval) :
+        cc = min(max(cc, 0), 127);
+    );
+  );
+  cc;
+);
+
+function process_cc_slew()
+(
   target_cc >= 0 && target_cc != current_cc ? (
     step = (target_cc - current_cc) / slew_samples;
 
@@ -139,8 +168,7 @@ function process_cc_slew() (
     );
 
     cc_int = floor(current_cc);
-
-    // CC rate limiting: only send when value actually changes
+																															
     cc_int != last_sent_cc ? (
       last_sent_cc = cc_int;
       cc_status = 0xB0 | channel;
@@ -148,6 +176,16 @@ function process_cc_slew() (
       midisend(0, cc_status, cc_msg23);
     );
   );
+);
+
+function newline(linetype) (
+	// linetype - 2 = Main heading, 1 = sub heading, others = standard text
+	
+	gfx_a = 1;
+
+	linetype == 2 ? (gfx_y = gfx_y+25; gfx_x = 5; gfx_r = 0; gfx_g = 0.5; gfx_b = 0.5;) :
+	linetype == 1 ? (gfx_y = gfx_y+15; gfx_x = 15; gfx_r = 1; gfx_g = 1; gfx_b = 0;) :
+	(gfx_y = gfx_y+10; gfx_x = 25; gfx_r = gfx_g = gfx_b = 1;);
 );
 
 @slider
@@ -169,15 +207,20 @@ keytrackmode = slider9;
 
 triggermode  = slider10;
 monomode     = slider11;
-bias 		     = slider12 / 100;
+bias         = slider12 / 100;
 slew_ms      = slider20;
+
+rand_amt     = slider25;
+rand_prob    = slider26;
+rand_type 	 = slider27;
+rand_limit   = slider28;
 
 slew_samples = max(1, slew_ms * srate / 1000);
 
-// This is just to ensure the window is sized for everything to fit, right off the bat, then it will hide sliders when not needed. 
+																																	
 is_start_up ? (is_start_up = 0) : (
-	slider_show(slider11, slider10 == 0 ? 1 : 0); // Hide Mono Note Priority if Trigger Mode is not set to Every Note On (otherwise it will really do nothing)
-	slider_show(slider12, slider11 == 1 && slider10 == 0 ? 1 : 0); // Show only when Mono Note Priority is Weighted Center, and Trigger Mode is set to Every Note On
+  slider_show(slider11, slider10 == 0 ? 1 : 0);
+  slider_show(slider12, slider11 == 1 && slider10 == 0 ? 1 : 0);
 );
 
 @block
@@ -191,13 +234,11 @@ while (midirecv(offset, msg1, msg23))
   status == NOTE_ON && vel > 0 ? (
     note_on[note] = 1;
     held_notes += 1;
+									
+    slider40 != note ? (slider40 = note; sliderchange(slider40););
 		
-	slider40 != note ? (
-		slider40 = note;
-		sliderchange(slider40);
-	); 
-	
-	last_note = note;	
+ 
+    last_note = note;
 
     send_ok =
       keytrackmode == 1 &&
@@ -206,16 +247,20 @@ while (midirecv(offset, msg1, msg23))
     send_ok ? (
       selected_note =
         triggermode == 0 ? (
-          monomode == 0 ? last_note :          
-			get_weighted_center_note(bias)
+          monomode == 0 ? last_note :
+          get_weighted_center_note(bias)
         ) :
         last_note;
 
-      target_cc = calcKeytrackValue(
+      base_cc = calcKeytrackValue(
         selected_note,
         minnote, maxnote,
         minval, maxval,
         invert, lowmode, highmode
+      );
+
+      base_cc >= 0 ? (
+        target_cc = apply_randomization(base_cc);
       );
     );
   );
@@ -231,3 +276,75 @@ while (midirecv(offset, msg1, msg23))
 
 @sample
 process_cc_slew();
+
+@gfx 800 430
+gfx_x = 5;
+gfx_y = 0;
+x=5;
+newline(0);
+gfx_drawstr("Last note pressed: ");
+gfx_drawnumber(last_note,0);
+gfx_drawstr(" CC value [current/target]: ");
+gfx_drawnumber(current_cc,0);
+gfx_drawstr("/");
+gfx_drawnumber(target_cc,0);
+gfx_drawstr("]");
+newline(2);
+gfx_drawstr("Help: ");
+newline(1);
+gfx_drawstr("\"Target MIDI CC\"");
+newline(0);
+gfx_drawstr("Which MIDI CC to modify based on note position.");
+newline(1);
+gfx_drawstr("\"Output CC (Min/Max)\""); 
+newline(0);
+gfx_drawstr("Defines the min and max CC values output by keytracking.");
+newline(1);
+gfx_drawstr("\"Input Note Range (Min/Max)\""); 
+newline(0);
+gfx_drawstr("Defines the note range that affects keytracking.");
+newline(1);
+gfx_drawstr("\"Below/Above Note Range Handling\""); 
+newline(0);
+gfx_drawstr("Determines what happens when notes fall outside the keytracking range.");
+newline(1);
+gfx_drawstr("\"Inversion\""); 
+newline(0);
+gfx_drawstr("Higher notes produce lower CC values when inverted.");
+newline(1);
+gfx_drawstr("\"Keytrack Mode\""); 
+newline(0);
+gfx_drawstr("Enable or disable keytracking dynamically.");
+newline(1);
+gfx_drawstr("\"Trigger Mode\""); 
+newline(0);
+gfx_drawstr("Determines when CC values are (re)calculated.");
+newline(1);
+gfx_drawstr("\"Mono Note Priority\""); 
+newline(0);
+gfx_drawstr("When multiple notes are held, and new notes are played, which note determines the keytracking?");
+newline(1);
+gfx_drawstr("\"Center Bias (%)\""); 
+newline(0);
+gfx_drawstr("Biases the keytracking value towards lower notes held, or higher notes held or anywhere between.");
+newline(1);
+gfx_drawstr("\"CC Slew Time (ms)\""); 
+newline(0);
+gfx_drawstr("How quickly the CC moves toward the target.");
+newline(1);
+gfx_drawstr("\"Random +/-\""); 
+newline(0);
+gfx_drawstr("Determines what max random value that could be +/to calculated CC.");
+newline(1);
+gfx_drawstr("\"Random Probability %\""); 
+newline(0);
+gfx_drawstr("The percentage likelihood that a random value will be applied.");
+newline(1);
+gfx_drawstr("\"Random Type\""); 
+newline(0);
+gfx_drawstr("Controls whether random CC deviation is bipolar, positive-only, or negative-only.");
+newline(1);
+gfx_drawstr("\"Random Range Limit\""); 
+newline(0);
+gfx_drawstr("Does this respect the Output CC Min/Max?");
+newline(1);
