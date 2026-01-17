@@ -284,7 +284,7 @@ x=5;
 newline(0);
 gfx_drawstr("Last note pressed: ");
 gfx_drawnumber(last_note,0);
-gfx_drawstr(" CC value [current/target]: ");
+gfx_drawstr(", CC value [current/target]: [");
 gfx_drawnumber(current_cc,0);
 gfx_drawstr("/");
 gfx_drawnumber(target_cc,0);
