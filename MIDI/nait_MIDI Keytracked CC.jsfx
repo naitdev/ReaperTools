@@ -1,7 +1,7 @@
 desc: MIDI Keytracked CC
 author: Nait
-version: 1.2
-changelog: Added probabilistic randomization (bi or unipolar), and value output and help in debug window. Fix some cosmetic stuff.
+version: 1.2.1
+changelog: Small change in the debug window to show lowest & highest note played as a way to help you figure out good Input Note Range settings.
 about:
 	# MIDI Keytracked CC
   Sends MIDI CC messages based on keytracking (note number played).
@@ -74,6 +74,9 @@ last_note  = -1;
 current_cc = -1;
 target_cc  = -1;
 last_sent_cc = -1;
+
+min_note_played = -1;
+max_note_played = -1;
 
 is_start_up = 1;
 
@@ -239,6 +242,9 @@ while (midirecv(offset, msg1, msg23))
 		
  
     last_note = note;
+		
+		note > max_note_played ? max_note_played = note;
+		note < min_note_played || (min_note_played == -1 && note != -1)? min_note_played = note;
 
     send_ok =
       keytrackmode == 1 &&
@@ -282,9 +288,13 @@ gfx_x = 5;
 gfx_y = 0;
 x=5;
 newline(0);
-gfx_drawstr("Last note pressed: ");
+gfx_drawstr("Notes played [last/low/high]: [");
 gfx_drawnumber(last_note,0);
-gfx_drawstr(", CC value [current/target]: [");
+gfx_drawstr("/");
+gfx_drawnumber(min_note_played,0);
+gfx_drawstr("/");
+gfx_drawnumber(max_note_played,0);
+gfx_drawstr("], CC value [current/target]: [");
 gfx_drawnumber(current_cc,0);
 gfx_drawstr("/");
 gfx_drawnumber(target_cc,0);
