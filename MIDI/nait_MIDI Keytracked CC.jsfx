@@ -1,7 +1,7 @@
 desc: MIDI Keytracked CC
 author: Nait
-version: 1.2.1
-changelog: Small change in the debug window to show lowest & highest note played as a way to help you figure out good Input Note Range settings.
+version: 1.2.2
+changelog: TRUE last note played is displayed in debug window now, rather than current note (note off will not change value to -1 anymore).
 about:
 	# MIDI Keytracked CC
   Sends MIDI CC messages based on keytracking (note number played).
@@ -71,6 +71,7 @@ NOTE_ON  = 0x90;
 
 held_notes = 0;
 last_note  = -1;
+last_note_disp  = -1;
 current_cc = -1;
 target_cc  = -1;
 last_sent_cc = -1;
@@ -242,6 +243,7 @@ while (midirecv(offset, msg1, msg23))
 		
  
     last_note = note;
+		last_note_disp = note;
 		
 		note > max_note_played ? max_note_played = note;
 		note < min_note_played || (min_note_played == -1 && note != -1)? min_note_played = note;
@@ -289,7 +291,7 @@ gfx_y = 0;
 x=5;
 newline(0);
 gfx_drawstr("Notes played [last/low/high]: [");
-gfx_drawnumber(last_note,0);
+gfx_drawnumber(last_note_disp,0);
 gfx_drawstr("/");
 gfx_drawnumber(min_note_played,0);
 gfx_drawstr("/");
